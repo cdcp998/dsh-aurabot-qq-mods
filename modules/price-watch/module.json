@@ -1,0 +1,24 @@
+{
+  "id": "price-watch",
+  "name": "价格监控",
+  "version": "1.0.0",
+  "description": "盯住商品价格：超级好价、早期好价、降价提醒、本插件记录的历史最低价；/监控价格 与 /查询价格 支持多平台比价。",
+  "category": "tool",
+  "tags": [
+    "价格",
+    "监控",
+    "比价"
+  ],
+  "author": "cdcp998",
+  "license": "MIT",
+  "api": 1,
+  "minPluginVersion": "1.2.0",
+  "requires": [],
+  "capabilities": [
+    "network",
+    "filesystem",
+    "plugin-config",
+    "plugin-internals"
+  ],
+  "homepage": "https://github.com/cdcp998/price-watch"
+}

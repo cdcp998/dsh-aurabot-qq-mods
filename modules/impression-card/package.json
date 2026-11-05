@@ -1,0 +1,14 @@
+{
+  "name": "aurabot-impression-card",
+  "version": "1.0.5",
+  "private": true,
+  "type": "module",
+  "description": "Aurabot 的印象卡片扩展：好感度 / 多维度印象档案、雷达卡片、加减分与主动提醒",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  }
+}

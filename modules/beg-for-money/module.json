@@ -1,0 +1,23 @@
+{
+  "id": "beg-for-money",
+  "name": "讨饭",
+  "version": "1.0.0",
+  "description": "群友提到打钱时伸手要饭并发收款码，记账要管理员私聊确认，确认后在原群道谢（有印象卡片时加「慷慨」）",
+  "category": "social",
+  "tags": [
+    "讨饭",
+    "记账",
+    "打赏"
+  ],
+  "author": "cdcp998",
+  "license": "MIT",
+  "api": 1,
+  "minPluginVersion": "1.2.0",
+  "requires": [],
+  "capabilities": [
+    "filesystem",
+    "plugin-config",
+    "plugin-internals"
+  ],
+  "homepage": "https://github.com/cdcp998/beg-for-money"
+}
