@@ -19,6 +19,16 @@ revoked.json          撤回的模块版本
 - 想提交模块：看 [贡献指南](CONTRIBUTING.md)。
 - 模块经审核合并后，CI 自动打包发布到 Releases，索引在 `registry` 分支的 `index.json`。
 
+## 独立模块仓库
+
+以下模块同时在作者个人账号下有独立仓库，用于开发记录和问题反馈；模块源仍以本仓库 `modules/<id>/` 为准，发布和校验流程不变。
+
+| 模块 | 独立仓库 |
+|---|---|
+| 讨饭 | [cdcp998/beg-for-money](https://github.com/cdcp998/beg-for-money) |
+| 印象卡片 | [cdcp998/impression-card](https://github.com/cdcp998/impression-card) |
+| 价格监控 | [cdcp998/price-watch](https://github.com/cdcp998/price-watch) |
+
 ## 许可范围
 
 本仓库内容的许可各不相同：
