@@ -1,7 +1,38 @@
 {
   "schema": 1,
-  "assetsBase": "https://github.com/aureth-labs/dsh-aurabot-qq-mods/releases/download/",
+  "assetsBase": "https://github.com/cdcp998/dsh-aurabot-qq-mods/releases/download/",
   "modules": [
+    {
+      "id": "beg-for-money",
+      "name": "讨饭",
+      "version": "1.0.0",
+      "description": "群友提到打钱时伸手要饭并发收款码，记账要管理员私聊确认，确认后在原群道谢（有印象卡片时加「慷慨」）",
+      "category": "social",
+      "tags": [
+        "讨饭",
+        "记账",
+        "打赏"
+      ],
+      "author": "cdcp998",
+      "license": "MIT",
+      "api": 1,
+      "minPluginVersion": "1.2.0",
+      "requires": [],
+      "capabilities": [
+        "filesystem",
+        "plugin-config",
+        "plugin-internals"
+      ],
+      "replacesBuiltin": false,
+      "homepage": "https://github.com/cdcp998/beg-for-money",
+      "tag": "beg-for-money-v1.0.0",
+      "file": "beg-for-money-v1.0.0.zip",
+      "path": "beg-for-money-v1.0.0/beg-for-money-v1.0.0.zip",
+      "size": 40716,
+      "sha256": "aba440b7acd820416240250ead4ddcb803794d497efe01c80b7df591e4f34526",
+      "commit": "12f6b93486d8384c91f4035993cfbdb55011b81b",
+      "publishedAt": "2026-11-05T19:21:28.504Z"
+    },
     {
       "id": "douyin",
       "name": "刷抖音",
@@ -126,6 +157,38 @@
       "publishedAt": "2026-11-02T05:12:04.737Z"
     },
     {
+      "id": "impression-card",
+      "name": "印象卡片",
+      "version": "1.0.5",
+      "description": "欢乐向的好感度 / 印象卡：多维度打分、雷达卡片、加减分系统通知、主动微调",
+      "category": "social",
+      "tags": [
+        "印象",
+        "好感度",
+        "卡片"
+      ],
+      "author": "cdcp998",
+      "license": "MIT",
+      "api": 1,
+      "minPluginVersion": "1.2.0",
+      "requires": [],
+      "capabilities": [
+        "network",
+        "filesystem",
+        "plugin-config",
+        "plugin-internals"
+      ],
+      "replacesBuiltin": false,
+      "homepage": "https://github.com/cdcp998/impression-card",
+      "tag": "impression-card-v1.0.5",
+      "file": "impression-card-v1.0.5.zip",
+      "path": "impression-card-v1.0.5/impression-card-v1.0.5.zip",
+      "size": 426956,
+      "sha256": "2fc506a96d5c9fd7b37c40d759cd5a396e7de4267d256151e2fa4b5150638fef",
+      "commit": "12f6b93486d8384c91f4035993cfbdb55011b81b",
+      "publishedAt": "2026-11-05T19:21:28.504Z"
+    },
+    {
       "id": "meme-wiki",
       "name": "梗百科",
       "version": "0.2.5",
@@ -219,6 +282,38 @@
       "publishedAt": "2026-11-02T22:42:01.291Z"
     },
     {
+      "id": "price-watch",
+      "name": "价格监控",
+      "version": "1.0.0",
+      "description": "盯住商品价格：超级好价、早期好价、降价提醒、本插件记录的历史最低价；/监控价格 与 /查询价格 支持多平台比价。",
+      "category": "tool",
+      "tags": [
+        "价格",
+        "监控",
+        "比价"
+      ],
+      "author": "cdcp998",
+      "license": "MIT",
+      "api": 1,
+      "minPluginVersion": "1.2.0",
+      "requires": [],
+      "capabilities": [
+        "network",
+        "filesystem",
+        "plugin-config",
+        "plugin-internals"
+      ],
+      "replacesBuiltin": false,
+      "homepage": "https://github.com/cdcp998/price-watch",
+      "tag": "price-watch-v1.0.0",
+      "file": "price-watch-v1.0.0.zip",
+      "path": "price-watch-v1.0.0/price-watch-v1.0.0.zip",
+      "size": 41532,
+      "sha256": "46eb91d2f121f0de1446b5086827e2c57106b2914b36c5e53c3697ff521627b6",
+      "commit": "12f6b93486d8384c91f4035993cfbdb55011b81b",
+      "publishedAt": "2026-11-05T19:21:28.504Z"
+    },
+    {
       "id": "tieba-reader",
       "name": "逛贴吧（只读）",
       "version": "1.5.0",
@@ -282,5 +377,5 @@
     }
   ],
   "revoked": [],
-  "generatedAt": "2026-11-03T07:24:21.624Z"
+  "generatedAt": "2026-11-05T19:21:28.504Z"
 }
