@@ -1,9 +1,9 @@
 name: CI
 
-# fork 验证用：所有分支 push 都跑；合并回上游前改回只跑 main。
 on:
   pull_request:
   push:
+    branches: [main]
 
 permissions:
   contents: read
