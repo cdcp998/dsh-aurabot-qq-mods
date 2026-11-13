@@ -40,18 +40,6 @@
     </div>
   </section>
 
-  <!-- 用途 -->
-  <section class="card" id="uses-card">
-    <h2>这段是用来做什么的</h2>
-    <ul class="uses">
-      <li data-kind="login">
-        <span class="uses-name">登录 Bambu 账号</span>
-        <span class="uses-fields">Bambu 账号 + 密码</span>
-        <span class="uses-text">机器人用这段密文登录云端，自动同步账号下的打印机。</span>
-      </li>
-    </ul>
-  </section>
-
   <!-- 表单 -->
   <form class="card" id="form" novalidate autocomplete="off">
     <h2>填写</h2>
@@ -90,12 +78,12 @@
     <p class="danger-sub">机器人解完就作废：同一段只能用一次，过期也打不开。</p>
     <textarea id="output" rows="5" readonly spellcheck="false" aria-label="加密后的文本"></textarea>
     <div class="actions">
-      <button type="button" class="primary" id="copy">复制</button>
-      <button type="button" class="secondary" id="copy-command">复制整条命令</button>
+      <button type="button" class="primary" id="copy-command">复制整条命令</button>
+      <button type="button" class="secondary" id="copy">只复制密文</button>
       <span class="copy-status" id="copy-status" role="status" aria-live="polite"></span>
     </div>
     <p class="hint" id="result-meta"></p>
-    <p class="hint">回到 QQ 私聊，发 <code>/打印机 登录</code> 加一个空格，再粘贴刚复制的这段。三种用法都是这一条命令。</p>
+    <p class="hint">回到 QQ 私聊，直接粘贴「复制整条命令」得到的内容即可（它已经带上了 <code>/打印机 登录</code>）。</p>
   </section>
 
   <footer class="page-foot">
@@ -162,7 +150,7 @@ if (bbx && formLib) {
 }
 
 async function boot (bbx, formLib) {
-  const state = { key: '', fingerprint: '', kind: 'login', busy: false }
+  const state = { key: '', fingerprint: '', kind: 'login', busy: false, touched: false }
 
   const el = {
     manualKey: $('manual-key'),
@@ -262,13 +250,20 @@ async function boot (bbx, formLib) {
 
   // 现在只有「登录」一种用途，页面不再需要展示判定结果。
 
-  function renderValidation () {
+  /**
+   * 重新校验并渲染提示。
+   *
+   * showErrors=false 用于刚打开页面那一刻：此时表单本来就是空的，
+   * 一上来就报「请填写」既没用也不友好。用户开始输入或点生成之后才显示错误。
+   */
+  function renderValidation (showErrors = state.touched) {
     const input = readForm()
     const verdict = formLib.validateInputs(input)
     state.kind = 'login'
 
     const items = []
-    for (const message of verdict.errors) {
+    const shownErrors = showErrors ? verdict.errors : []
+    for (const message of shownErrors) {
       const li = document.createElement('li')
       li.className = 'issue err'
       li.textContent = message
@@ -301,7 +296,8 @@ async function boot (bbx, formLib) {
     el.region.value = formLib.DEFAULT_REGION
     resetReveals()
     hideResult()
-    renderValidation()
+    state.touched = false
+    renderValidation(false)
     el.account.focus()
   }
 
@@ -341,7 +337,8 @@ async function boot (bbx, formLib) {
     event.preventDefault()
     if (state.busy) return
     const input = readForm()
-    const verdict = renderValidation()
+    state.touched = true
+    const verdict = renderValidation(true)
     if (!state.key) {
       el.keyMissing.hidden = false
       el.keyReady.hidden = true
@@ -368,7 +365,11 @@ async function boot (bbx, formLib) {
         '这是一段登录信封，' +
         formatExpiry(payload.exp) + ' 前有效，且只能用一次。已清空账号和密码输入框。'
       clearSecrets()
-      renderValidation()
+      // 生成成功后输入框已经被清空，此时不要重跑校验 —— 否则会显示
+      // 「请填写 Bambu 账号和密码」这种红色报错，看起来像失败了。
+      el.issues.replaceChildren()
+      el.issues.hidden = true
+      syncCopyButtons()
       el.result.scrollIntoView({ block: 'center' })
     } catch (err) {
       const code = err && err.code ? err.code : ''
@@ -381,6 +382,7 @@ async function boot (bbx, formLib) {
       el.copyStatus.textContent = ''
       el.resultMeta.textContent = ''
       el.result.hidden = true
+      syncCopyButtons()
       const li = document.createElement('li')
       li.className = 'issue err'
       li.textContent = '没能生成：' + reason
@@ -393,6 +395,13 @@ async function boot (bbx, formLib) {
     }
   }
 
+  /** 文本框空的时候把复制按钮置灰：没东西可复制就别让人点。 */
+  function syncCopyButtons () {
+    const has = String(el.output.value || '').trim().length > 0
+    el.copy.disabled = !has
+    el.copyCommand.disabled = !has
+  }
+
   async function showCopied (label) {
     el.copyStatus.textContent = label
     setTimeout(() => { el.copyStatus.textContent = '' }, 2500)
@@ -402,10 +411,12 @@ async function boot (bbx, formLib) {
 
   el.form.addEventListener('submit', handleSubmit)
   el.form.addEventListener('input', () => {
+    state.touched = true
     hideResult()
     renderValidation()
   })
   el.form.addEventListener('change', () => {
+    state.touched = true
     hideResult()
     renderValidation()
   })
@@ -442,13 +453,17 @@ async function boot (bbx, formLib) {
   }
 
   el.copy.addEventListener('click', async () => {
-    const ok = await copyText(el.output.value)
-    await showCopied(ok ? '已复制。去 QQ 私聊粘贴吧。' : '复制失败：请点一下文本框，手动全选复制。')
+    const text = String(el.output.value || '').trim()
+    // 还没生成任何内容：这不是「复制失败」，是「没有东西可复制」
+    if (!text) { await showCopied('还没有生成内容：先填账号密码，点「生成加密文本」。'); return }
+    const ok = await copyText(text)
+    await showCopied(ok ? '已复制。去 QQ 私聊粘贴吧。' : '浏览器拦住了自动复制：请点一下文本框，手动全选复制。')
   })
   el.copyCommand.addEventListener('click', async () => {
-    const text = el.output.value
-    const ok = text ? await copyText('/打印机 登录 ' + text) : false
-    await showCopied(ok ? '已复制整条命令，直接粘贴到私聊。' : '复制失败：请点一下文本框，手动全选复制。')
+    const text = String(el.output.value || '').trim()
+    if (!text) { await showCopied('还没有生成内容：先填账号密码，点「生成加密文本」。'); return }
+    const ok = await copyText('/打印机 登录 ' + text)
+    await showCopied(ok ? '已复制整条命令，直接粘贴到私聊。' : '浏览器拦住了自动复制：请点一下文本框，手动全选复制。')
   })
   el.clear.addEventListener('click', clearAll)
 
@@ -458,6 +473,7 @@ async function boot (bbx, formLib) {
   })
 
   // ---- 启动
+  syncCopyButtons()   // 一开始没有内容，复制按钮先置灰
   renderKey()
   renderValidation()
   const initial = keyFromLocation()

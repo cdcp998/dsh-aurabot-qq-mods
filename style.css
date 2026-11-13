@@ -83,6 +83,12 @@ body {
   font-size: 0.9375rem;
 }
 
+/* 作者样式里的 display 会盖过浏览器默认的 [hidden]{display:none}，
+   所以这里必须显式声明一次，否则「生成前藏起来的结果区」会一直显示。 */
+[hidden] {
+  display: none !important;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
