@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<title>Bambu 打印 · 离线登录</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<main class="page">
+
+  <header class="page-head">
+    <h1>Bambu 打印 · 离线登录</h1>
+    <p class="lead">秘密在你自己的浏览器里加密成一段短文本，只有那台机器人能解开。这个页面不发任何网络请求，也不保存任何输入（没有本地缓存、没有 cookie），关掉或刷新就没了。</p>
+  </header>
+
+  <p class="fatal" id="fatal" hidden></p>
+
+  <!-- 公钥 -->
+  <section class="card" id="key-card">
+    <h2>这把公钥</h2>
+
+    <div id="key-missing">
+      <p class="notice">请先在 QQ 里私聊机器人发 <code>/打印机 登录</code> 拿链接，再点开那个链接。链接末尾的 <code>#k=</code> 就是这台机器人的公钥。</p>
+      <p class="hint">已经拿到链接但没自动带过来？把整条链接（或那 87 个字符的公钥）贴到下面：</p>
+      <div class="inline">
+        <input id="manual-key" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="粘贴链接，或 87 个字符的公钥">
+        <button type="button" class="secondary" id="use-key">使用</button>
+      </div>
+      <p class="field-error" id="key-error" hidden></p>
+    </div>
+
+    <div id="key-ready" hidden>
+      <p class="ok-line">公钥已载入。核对指纹和机器人面板上显示的一致，再往下填。</p>
+      <p class="fingerprint">公钥指纹 <strong id="key-fingerprint"></strong></p>
+      <button type="button" class="ghost small" id="change-key">换一把公钥</button>
+    </div>
+  </section>
+
+  <!-- 用途 -->
+  <section class="card" id="uses-card">
+    <h2>这段是用来做什么的</h2>
+    <ul class="uses">
+      <li data-kind="login">
+        <span class="uses-name">登录 Bambu 账号</span>
+        <span class="uses-fields">Bambu 账号 + 密码</span>
+        <span class="uses-text">机器人用这段密文登录云端，自动同步账号下的打印机。</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- 表单 -->
+  <form class="card" id="form" novalidate autocomplete="off">
+    <h2>填写</h2>
+
+    <div class="field">
+      <label for="account">Bambu 账号 <span class="tag req">必填</span></label>
+      <input id="account" name="account" type="text" inputmode="text" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" maxlength="200" placeholder="邮箱，或 5~15 位数字手机号">
+    </div>
+
+    <div class="field">
+      <label for="password">Bambu 密码 <span class="tag req">必填</span></label>
+      <div class="inline">
+        <input id="password" name="password" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" maxlength="256" placeholder="Bambu 账号的密码">
+        <button type="button" class="ghost small reveal" data-reveal="password" aria-pressed="false">显示</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="region">账号区域</label>
+      <select id="region" name="region"></select>
+      <p class="hint">默认中国大陆。用国际站注册的账号（邮箱后缀常见 gmail / outlook）才需要改成「国际」。</p>
+    </div>
+
+    <ul class="issues" id="issues"></ul>
+
+    <div class="actions">
+      <button type="submit" class="primary" id="generate">生成加密文本</button>
+      <button type="button" class="ghost" id="clear">清空</button>
+    </div>
+    <p class="hint">生成后账号和密码会被清空；用完记得点「清空」。</p>
+  </form>
+
+  <!-- 结果 -->
+  <section class="card result" id="result" hidden>
+    <p class="danger-note">这段里是你的秘密。只在私聊发给机器人，发完立刻删掉。<strong>不要发群里。</strong></p>
+    <p class="danger-sub">机器人解完就作废：同一段只能用一次，过期也打不开。</p>
+    <textarea id="output" rows="5" readonly spellcheck="false" aria-label="加密后的文本"></textarea>
+    <div class="actions">
+      <button type="button" class="primary" id="copy">复制</button>
+      <button type="button" class="secondary" id="copy-command">复制整条命令</button>
+      <span class="copy-status" id="copy-status" role="status" aria-live="polite"></span>
+    </div>
+    <p class="hint" id="result-meta"></p>
+    <p class="hint">回到 QQ 私聊，发 <code>/打印机 登录</code> 加一个空格，再粘贴刚复制的这段。三种用法都是这一条命令。</p>
+  </section>
+
+  <footer class="page-foot">
+    <p>页面没有构建、没有依赖，只有同目录的 <code>style.css</code> / <code>bbx.js</code> / <code>enroll-form.js</code>，不连接任何外部域名。</p>
+  </footer>
+
+  <noscript><p class="fatal">这个页面需要 JavaScript 才能在本地加密，请换一个正常的浏览器打开。</p></noscript>
+</main>
+
+<script type="module">
+const $ = (id) => document.getElementById(id)
+
+function fatal (message) {
+  const el = $('fatal')
+  el.textContent = message
+  el.hidden = false
+}
+
+function pad2 (n) { return String(n).padStart(2, '0') }
+
+function formatExpiry (seconds) {
+  const d = new Date(seconds * 1000)
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) +
+    ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes())
+}
+
+// 链接里的公钥：优先 #k=，其次 ?k=。
+function keyFromLocation () {
+  const hash = String(location.hash || '').replace(/^#/, '')
+  const search = String(location.search || '').replace(/^\?/, '')
+  let key = ''
+  if (hash) key = new URLSearchParams(hash).get('k') || ''
+  if (!key && search) key = new URLSearchParams(search).get('k') || ''
+  return String(key).trim()
+}
+
+// 用户可能贴整条链接、带空格的公钥，或者只是那 87 个字符。
+function extractKey (raw) {
+  let text = String(raw == null ? '' : raw).trim()
+  if (!text) return ''
+  const match = text.match(/[#?&]k=([A-Za-z0-9_-]+)/)
+  if (match) return match[1]
+  return text.replace(/\s+/g, '')
+}
+
+let bbx = null
+let formLib = null
+
+if (!globalThis.crypto || !globalThis.crypto.subtle) {
+  fatal('这个浏览器没有可用的 WebCrypto，无法在本地加密。请用 https 打开（GitHub Pages 本来就是 https），或在本机用 http://localhost 打开。')
+} else {
+  try {
+    bbx = await import('./bbx.js')
+    formLib = await import('./enroll-form.js')
+  } catch (err) {
+    fatal('页面脚本没加载起来：' + (err && err.message ? err.message : String(err)) + '。如果是直接双击打开的本地文件，浏览器会拦住模块加载，请改用 https 或本地 http 服务。')
+  }
+}
+
+if (bbx && formLib) {
+  boot(bbx, formLib).catch((err) => {
+    fatal('页面初始化失败：' + ((err && err.message) || String(err)))
+  })
+}
+
+async function boot (bbx, formLib) {
+  const state = { key: '', fingerprint: '', kind: 'login', busy: false }
+
+  const el = {
+    manualKey: $('manual-key'),
+    useKey: $('use-key'),
+    keyError: $('key-error'),
+    keyMissing: $('key-missing'),
+    keyReady: $('key-ready'),
+    fingerprint: $('key-fingerprint'),
+    changeKey: $('change-key'),
+    form: $('form'),
+    account: $('account'),
+    password: $('password'),
+    region: $('region'),
+    issues: $('issues'),
+    generate: $('generate'),
+    clear: $('clear'),
+    result: $('result'),
+    output: $('output'),
+    copy: $('copy'),
+    copyCommand: $('copy-command'),
+    copyStatus: $('copy-status'),
+    resultMeta: $('result-meta'),
+  }
+
+  const KIND_LABEL = { login: '登录' }
+
+  // 生存时间固定 10 分钟（不再给用户选）：信封是一次性的，越短越安全，10 分钟足够走完
+  // 「生成 → 复制 → 粘贴到私聊」这条路。
+  const FIXED_TTL_MIN = 10
+
+  // 区域要能选：国服账号和国际站账号不互通，猜错了会登录失败。
+  for (const option of formLib.REGION_OPTIONS) {
+    const node = document.createElement('option')
+    node.value = option.value
+    node.textContent = option.label
+    el.region.append(node)
+  }
+  el.region.value = formLib.DEFAULT_REGION
+
+  function readForm () {
+    return {
+      account: el.account.value,
+      password: el.password.value,
+      ttlMin: FIXED_TTL_MIN,
+      region: el.region.value,
+    }
+  }
+
+  function hideResult () {
+    if (el.result.hidden) return
+    el.result.hidden = true
+    el.output.value = ''
+    el.copyStatus.textContent = ''
+    el.resultMeta.textContent = ''
+  }
+
+  function renderKey () {
+    const has = Boolean(state.key)
+    el.keyMissing.hidden = has
+    el.keyReady.hidden = !has
+    el.fingerprint.textContent = has ? state.fingerprint : ''
+    el.generate.disabled = !has || state.busy
+  }
+
+  async function setKey (raw, { quiet = false } = {}) {
+    const key = extractKey(raw)
+    el.keyError.hidden = true
+    el.keyError.textContent = ''
+    if (!key) {
+      state.key = ''
+      state.fingerprint = ''
+      renderKey()
+      if (!quiet) {
+        el.keyError.textContent = '没有读到公钥。请把带 #k= 的整条链接贴过来。'
+        el.keyError.hidden = false
+      }
+      return false
+    }
+    try {
+      await bbx.importPublicKey(key)
+      const raw0 = bbx.fromBase64Url(key)
+      const digest = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', raw0))
+      state.key = key
+      state.fingerprint = Array.from(digest.slice(0, 4)).map((b) => b.toString(16).padStart(2, '0')).join('')
+      el.manualKey.value = ''
+      renderKey()
+      return true
+    } catch (err) {
+      state.key = ''
+      state.fingerprint = ''
+      renderKey()
+      el.keyError.textContent = '这把公钥不对：' + (err && err.code === 'BAD_KEY' ? '应该是 87 个字符的公钥（未压缩 P-256 点）' : (err && err.message) || '无法解析') + '。'
+      el.keyError.hidden = false
+      return false
+    }
+  }
+
+  // 现在只有「登录」一种用途，页面不再需要展示判定结果。
+
+  function renderValidation () {
+    const input = readForm()
+    const verdict = formLib.validateInputs(input)
+    state.kind = 'login'
+
+    const items = []
+    for (const message of verdict.errors) {
+      const li = document.createElement('li')
+      li.className = 'issue err'
+      li.textContent = message
+      items.push(li)
+    }
+    for (const message of verdict.warnings) {
+      const li = document.createElement('li')
+      li.className = 'issue warn'
+      li.textContent = message
+      items.push(li)
+    }
+    el.issues.replaceChildren(...items)
+    el.issues.hidden = items.length === 0
+    return verdict
+  }
+
+  function resetReveals () {
+    for (const button of document.querySelectorAll('.reveal')) {
+      const target = document.getElementById(button.dataset.reveal)
+      if (!target) continue
+      target.type = 'password'
+      button.textContent = '显示'
+      button.setAttribute('aria-pressed', 'false')
+    }
+  }
+
+  function clearAll () {
+    el.account.value = ''
+    el.password.value = ''
+    el.region.value = formLib.DEFAULT_REGION
+    resetReveals()
+    hideResult()
+    renderValidation()
+    el.account.focus()
+  }
+
+  function clearSecrets () {
+    el.account.value = ''
+    el.password.value = ''
+    el.password.type = 'password'
+    for (const button of document.querySelectorAll('.reveal')) {
+      if (button.dataset.reveal === 'password') {
+        button.textContent = '显示'
+        button.setAttribute('aria-pressed', 'false')
+      }
+    }
+  }
+
+  async function copyText (text) {
+    if (!text) return false
+    try {
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(text)
+        return true
+      }
+    } catch (err) {
+      // 落到下面的 execCommand 兜底
+    }
+    try {
+      el.output.focus()
+      el.output.select()
+      el.output.setSelectionRange(0, text.length)
+      return document.execCommand('copy')
+    } catch (err) {
+      return false
+    }
+  }
+
+  async function handleSubmit (event) {
+    event.preventDefault()
+    if (state.busy) return
+    const input = readForm()
+    const verdict = renderValidation()
+    if (!state.key) {
+      el.keyMissing.hidden = false
+      el.keyReady.hidden = true
+      el.manualKey.focus()
+      el.keyError.textContent = '还没读到公钥，先把带 #k= 的链接贴进来。'
+      el.keyError.hidden = false
+      return
+    }
+    if (!verdict.ok) {
+      el.form.scrollIntoView({ block: 'center' })
+      return
+    }
+    state.busy = true
+    el.generate.disabled = true
+    el.generate.textContent = '正在本地加密…'
+    try {
+      const payload = formLib.buildPayload({ ...input, region: input.region })
+      const text = await bbx.sealEnvelope(state.key, payload)
+      hideResult()
+      el.output.value = text
+      el.result.hidden = false
+      el.copyStatus.textContent = ''
+      el.resultMeta.textContent =
+        '这是一段登录信封，' +
+        formatExpiry(payload.exp) + ' 前有效，且只能用一次。已清空账号和密码输入框。'
+      clearSecrets()
+      renderValidation()
+      el.result.scrollIntoView({ block: 'center' })
+    } catch (err) {
+      const code = err && err.code ? err.code : ''
+      const reason = {
+        NO_CRYPTO: '这个浏览器不支持 WebCrypto，请换浏览器或改用 https。',
+        BAD_PAYLOAD: '内容不符合信封格式：' + ((err && err.message) || ''),
+        NO_CODE: '缺少必要口令。',
+        BAD_KEY: '公钥不对，请重新从 QQ 里的链接打开本页。',
+      }[code] || (err && err.message) || '加密失败。'
+      el.copyStatus.textContent = ''
+      el.resultMeta.textContent = ''
+      el.result.hidden = true
+      const li = document.createElement('li')
+      li.className = 'issue err'
+      li.textContent = '没能生成：' + reason
+      el.issues.append(li)
+      el.issues.hidden = false
+    } finally {
+      state.busy = false
+      el.generate.textContent = '生成加密文本'
+      renderKey()
+    }
+  }
+
+  async function showCopied (label) {
+    el.copyStatus.textContent = label
+    setTimeout(() => { el.copyStatus.textContent = '' }, 2500)
+  }
+
+  // ---- 事件绑定
+
+  el.form.addEventListener('submit', handleSubmit)
+  el.form.addEventListener('input', () => {
+    hideResult()
+    renderValidation()
+  })
+  el.form.addEventListener('change', () => {
+    hideResult()
+    renderValidation()
+  })
+
+  el.useKey.addEventListener('click', async () => {
+    const ok = await setKey(el.manualKey.value)
+    if (ok) {
+      el.manualKey.value = ''
+      el.account.focus()
+    }
+  })
+  el.manualKey.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      el.useKey.click()
+    }
+  })
+  el.changeKey.addEventListener('click', () => {
+    state.key = ''
+    state.fingerprint = ''
+    renderKey()
+    el.manualKey.focus()
+  })
+
+  for (const button of document.querySelectorAll('.reveal')) {
+    button.addEventListener('click', () => {
+      const target = document.getElementById(button.dataset.reveal)
+      if (!target) return
+      const show = target.type === 'password'
+      target.type = show ? 'text' : 'password'
+      button.textContent = show ? '隐藏' : '显示'
+      button.setAttribute('aria-pressed', show ? 'true' : 'false')
+    })
+  }
+
+  el.copy.addEventListener('click', async () => {
+    const ok = await copyText(el.output.value)
+    await showCopied(ok ? '已复制。去 QQ 私聊粘贴吧。' : '复制失败：请点一下文本框，手动全选复制。')
+  })
+  el.copyCommand.addEventListener('click', async () => {
+    const text = el.output.value
+    const ok = text ? await copyText('/打印机 登录 ' + text) : false
+    await showCopied(ok ? '已复制整条命令，直接粘贴到私聊。' : '复制失败：请点一下文本框，手动全选复制。')
+  })
+  el.clear.addEventListener('click', clearAll)
+
+  window.addEventListener('hashchange', async () => {
+    const key = keyFromLocation()
+    if (key) await setKey(key, { quiet: true })
+  })
+
+  // ---- 启动
+  renderKey()
+  renderValidation()
+  const initial = keyFromLocation()
+  if (initial) {
+    const ok = await setKey(initial, { quiet: true })
+    if (ok) {
+      el.account.focus()
+    } else {
+      el.keyError.hidden = false
+    }
+  } else {
+    el.manualKey.focus()
+  }
+}
+</script>
+</body>
+</html>
