@@ -554,16 +554,18 @@ test('帮助用合并转发：默认一条塞进全部页，含风险与存储�
     assert.equal(fwd.nodes.length, 6, '默认要把 6 页全塞进同一条转发，实际 ' + fwd.nodes.length + ' 页')
     const all = fwd.text
 
+    // 合并转发里不写「帮助 N/6」：卡片本身就是折叠的一串，页码只是噪音。
+    assert.doesNotMatch(all, /帮助 \d+\/\d+/, '合并转发的节点里不该出现页码')
     // 第 1 页：风险告知
-    assert.match(all, /帮助 1\/6/)
+    assert.match(all, /① 风险/)
     assert.match(all, /风险/)
     assert.match(all, /访问码 = 打印机控制权/)
     // 第 2 页：本地存储策略
-    assert.match(all, /帮助 2\/6/)
+    assert.match(all, /② 数据存在哪/)
     assert.match(all, /modules-data/)
     assert.match(all, /host-key/)
-    // 第 3-6 页：命令带说明
-    assert.match(all, /帮助 6\/6/)
+    // 第 6 页：安全码与解锁
+    assert.match(all, /⑥ 安全码与解锁/)
     assert.match(all, /暂停 · 继续 · 停止/)
     assert.match(all, /0 表示关加热/)
     assert.match(all, /群里只能暂停\/继续，停止必须私聊/)
@@ -576,7 +578,7 @@ test('帮助用合并转发：默认一条塞进全部页，含风险与存储�
     for (const node of fwd.nodes) assert.ok(String(node).split('\n').length <= 16, '单页太长：' + String(node).slice(0, 40))
 
     // 不再往聊天里刷一坨纯文本
-    assert.equal(api.__replies.filter((r) => r.text && /帮助 1\//.test(r.text)).length, 0, '帮助不该再用普通文本刷屏')
+    assert.equal(api.__replies.filter((r) => r.text && /拓竹 · 帮助/.test(r.text)).length, 0, '帮助不该再用普通文本刷屏')
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
 
@@ -625,7 +627,8 @@ test('帮助按角色分页：非主人 6 页看不到局域网，主人 7 页',
     await say(api, '/打印机 帮助', { userId: OWNER, chatId: 'private:' + OWNER })
     const ownerFwd = lastForward(api)
     assert.equal(ownerFwd.nodes.length, 7, '主人应当多一页')
-    assert.match(ownerFwd.text, /帮助 7\/7/)
+    // 合并转发里不写页码；主人那页的圈号要排第 7
+    assert.match(ownerFwd.text, /⑦ 主人专用/)
     assert.match(ownerFwd.text, /主人专用/)
     assert.match(ownerFwd.text, /绑定 本地/)
     assert.match(ownerFwd.text, /证书/)

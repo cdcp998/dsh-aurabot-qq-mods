@@ -133,7 +133,8 @@ const HELP_PAGES = [
  */
 function helpPage (page, isOwner) {
   const pages = HELP_PAGES.slice()
-  if (isOwner) pages.push({ key: 'owner', title: '④ 主人专用（局域网）', lines: OWNER_HELP_LINES })
+  // 主人那一页实际排第 7，标题里的圈号要和位置对上
+  if (isOwner) pages.push({ key: 'owner', title: '⑦ 主人专用（局域网）', lines: OWNER_HELP_LINES })
   const total = pages.length
   const index = Math.min(total, Math.max(1, Math.round(Number(page) || 1))) - 1
   const current = pages[index]
@@ -190,13 +191,14 @@ function choiceForwardNodes (list) {
 function helpForwardNodes (isOwner) {
   const pages = HELP_PAGES.slice()
   if (isOwner) pages.push({ key: 'owner', title: '⑦ 主人专用（局域网）', lines: OWNER_HELP_LINES })
-  const total = pages.length
-  return pages.map((page, index) => ({
+  // 每个节点只放这一段的标题和正文，**不写「帮助 1/7」**：
+  // 合并转发本身就是一层折叠卡片，点开是并列的几段，页码只会显得啰嗦。
+  return pages.map((page) => ({
     type: 'node',
     data: {
       name: '拓竹',
       uin: '0',
-      content: '帮助 ' + (index + 1) + '/' + total + '：' + page.title + '\n' + page.lines.join('\n'),
+      content: page.title + '\n' + page.lines.join('\n'),
     },
   }))
 }
@@ -1080,6 +1082,9 @@ export default {
       if (who.isOwner) await ensureOwnerSession()
       // 多用户模式关掉 = 只服务主人一个人：别人连帮助都不给，静默不理
       if (s.multiUser === false && !who.isOwner) return null
+      // 总开关关着就什么都不响应，**帮助也不例外**：
+      // 关掉的意思是「这个模块现在不工作」，这时候还回一大段帮助会让人以为它是开着的。
+      if (!s.enabled) return '拓竹模块没开总开关：让主人在面板「拓竹」里打开。'
       // 帮助分页：默认第 1 页（风险），「/打印机 帮助 2」翻页
       const helpFor = (q, page) => helpPage(page || 1, !!(q && q.isOwner))
       if (!text) return helpFor(who)
@@ -1093,7 +1098,6 @@ export default {
         const page = Number(rest.match(/\d+/)?.[0]) || 1
         return { forwardNodes: helpForwardNodes(!!(who && who.isOwner)), fallback: helpFor(who, page) }
       }
-      if (!s.enabled) return '拓竹模块没开总开关：让主人在面板「拓竹」里打开。'
 
       // 敏感操作只认私聊：先于任何绑定/白名单判断，免得群里给出「你还没绑定」这种误导。
       if (msg.kind !== 'private' && /^(设置安全码|设安全码|register|改安全码|改码|changecode|解锁|unlock|登录|登陆|login|验证码|code|两步验证|2fa|tfa|绑定|添加|bind|解绑|取消绑定|unbind|同步|刷新|sync|授权|grant|撤销|revoke|群权限|群设置|groupperm|接口|interface|通道|证书|cert|锁定|lock)$/.test(head)) {
