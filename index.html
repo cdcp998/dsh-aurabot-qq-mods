@@ -6,15 +6,15 @@
 <meta name="color-scheme" content="light dark">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex">
-<title>Bambu 打印 · 离线登录</title>
+<title>Bambu 打印 · 登录</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <main class="page">
 
   <header class="page-head">
-    <h1>Bambu 打印 · 离线登录</h1>
-    <p class="lead">秘密在你自己的浏览器里加密成一段短文本，只有那台机器人能解开。这个页面不发任何网络请求，也不保存任何输入（没有本地缓存、没有 cookie），关掉或刷新就没了。</p>
+    <h1>Bambu 打印 · 登录</h1>
+    <p class="lead">为了避免账号密码在聊天内暴露或者留存，这个页面作用仅生成密文，不发任何网络请求，也不保存任何输入（没有本地缓存、没有 cookie），关掉或刷新就没了。</p>
   </header>
 
   <p class="fatal" id="fatal" hidden></p>
@@ -74,7 +74,7 @@
 
   <!-- 结果 -->
   <section class="card result" id="result" hidden>
-    <p class="danger-note">这段里是你的秘密。只在私聊发给机器人，发完立刻删掉。<strong>不要发群里。</strong></p>
+    <p class="danger-note">这段里是你的密文。只在私聊发给机器人即可<strong>不要发群里。</strong></p>
     <p class="danger-sub">机器人解完就作废：同一段只能用一次，过期也打不开。</p>
     <textarea id="output" rows="5" readonly spellcheck="false" aria-label="加密后的文本"></textarea>
     <div class="actions">
