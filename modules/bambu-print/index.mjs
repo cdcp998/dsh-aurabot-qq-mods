@@ -39,10 +39,11 @@ const HELP_PAGES = [
     key: 'risk',
     title: '① 风险',
     lines: [
+      '私聊发送同样有风险：私聊记录会以明文留存，撤回并不能可靠消除风险。请优先使用官方授权方式或临时凭据；如确需提供，请先评估风险，事后立即修改密码并检查账号授权与设备绑定情况。',
       '访问码 = 打印机控制权：谁拿到谁能暂停、停止、改温度。',
-      '别把访问码 / 安全码发到群里；群里也不接受绑定、解锁、授权。',
-      '局域网连接会先固定打印机自己的身份，之后每次核对；对不上就拒绝。',
-      '画面端口同样先核对再抓拍，不会把访问码交给不认识的对端。',
+      '别把密码、访问码、安全码发到群里；群里也不接受绑定、解锁、授权等敏感操作。',
+      '安全码和访问码一旦泄露，最坏情况是别人能控制你的打印机；账号密码泄露还可能连带你的 Bambu 账号。',
+      '谨慎使用插件：请在你熟悉的「鱼」管理者下使用。',
     ],
   },
   {
@@ -682,21 +683,10 @@ export default {
       return (minutes || 1) + ' 分钟'
     }
 
-    async function tryDeleteMessage(msg) {
-      if (!msg || !msg.messageId) return false
-      try { await api.onebot('delete_msg', { message_id: msg.messageId }, { timeoutMs: 4000 }); return true } catch (error) { return false }
-    }
-
-    /**
-     * 撤回含秘密的消息，并把「撤回成功了没有」写回给用户。
-     * 机器人的撤回在私聊里经常没权限（QQ 只允许撤回自己发的消息），所以要明确请用户手动撤回。
-     */
-    async function recallSecretMessage(msg) {
-      const ok = await tryDeleteMessage(msg)
-      return ok
-        ? '\n（已尝试撤回这条消息）请确认它已经从聊天里消失；没消失就长按手动撤回。'
-        : '\n⚠️ 我没权限撤回你这条消息：请立刻自己撤回（长按 → 撤回），别让它留在聊天记录里。'
-    }
+    // 撤回（delete_msg）已经整体移除，原因：
+    //   · 机器人撤自己发的消息经常没权限，成功率不稳，写了「已尝试撤回」也做不到；
+    //   · 那句提示本身就在聊天里留下一笔「这里有敏感消息」的注脚，反而更显眼。
+    // 现在改成在风险提示里把话说清楚（私聊会留明文），不再假装能擦掉已发出的消息。
 
     async function audit(actorQQ, action, ok, note, target) {
       try { await vault.audit({ actor: String(actorQQ || ''), action, ok, note: String(note || '').slice(0, 160), target }) } catch (error) { /* 审计失败不拖垮功能 */ }
@@ -1120,11 +1110,9 @@ export default {
         try {
           applyLockMinutes()
           const r = await vault.unlock(who.userId, code)
-          const recall = await recallSecretMessage(msg)
           await audit(who.userId, 'unlock', true, '', who.userId)
-          return '已解锁，有效期 ' + lockSpanText(r.until - now()) + '。' + recall
+          return '已解锁，有效期 ' + lockSpanText(r.until - now()) + '。'
         } catch (error) {
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'unlock', false, error.code || 'BAD_CODE')
           return '解锁失败：' + explain(error)
         }
@@ -1144,14 +1132,11 @@ export default {
           applyLockMinutes()
           await vault.register(who.userId, rest)
           const r = await vault.unlock(who.userId, rest)
-          const recall = await recallSecretMessage(msg)
           await audit(who.userId, 'register', true)
-          return '好了，安全码已设置并解锁 ' + lockSpanText(r.until - now()) + '。' +
-            recall + '\n' +
+          return '好了，安全码已设置并解锁 ' + lockSpanText(r.until - now()) + '。\n' +
             '这个安全码是你全部打印机秘密的唯一钥匙：我、主人都看不到，忘了只能清空重绑。\n' +
             '下一步：/打印机 登录 <Bambu 账号> <密码>'
         } catch (error) {
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'register', false, error.code || 'BAD_INPUT')
           return '设置失败：' + explain(error)
         }
@@ -1163,11 +1148,9 @@ export default {
         if (!oldCode || !newCode) return '用法：/打印机 改安全码 <旧安全码> <新安全码>'
         try {
           await vault.changeCode(who.userId, oldCode, newCode)
-          const recall = await recallSecretMessage(msg)
           await audit(who.userId, 'changecode', true)
-          return '安全码已更换（绑定数据不用重绑）。' + recall
+          return '安全码已更换（绑定数据不用重绑）。'
         } catch (error) {
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'changecode', false, error.code || 'BAD_CODE')
           return '更换失败：' + explain(error)
         }
@@ -1196,26 +1179,24 @@ export default {
         try {
           const session = (testHooks.createCloudLogin || createCloudLogin)({ account, password: pass || password, region: region })
           const r = await session.login()
-          const recall = await recallSecretMessage(msg)
           if (r.ok) {
             pendingLogins.delete(who.userId)
             const saved = await saveCloudLogin(who.userId, r, account)
             await audit(who.userId, 'login', true, 'cloud')
-            return '登录成功，云端 token 已加密保存' + (saved.count ? '，发现 ' + saved.count + ' 台打印机：' + saved.names.join('、') : '；账号下暂时没发现打印机，可稍后 /打印机 同步') + '。' + recall
+            return '登录成功，云端 token 已加密保存' + (saved.count ? '，发现 ' + saved.count + ' 台打印机：' + saved.names.join('、') : '；账号下暂时没发现打印机，可稍后 /打印机 同步') + '。'
           }
           if (r.need === 'code') {
             pendingLogins.set(who.userId, { session, account, region, until: now() + LOGIN_TTL_MS, need: '验证码' })
             await audit(who.userId, 'login', false, 'need-code')
-            return '云端要求验证码。发「/打印机 验证码」让我请求验证码，然后「/打印机 验证码 <6位>」提交（5 分钟内有效）。' + recall
+            return '云端要求验证码。发「/打印机 验证码」让我请求验证码，然后「/打印机 验证码 <6位>」提交（5 分钟内有效）。'
           }
           if (r.need === 'tfa') {
             pendingLogins.set(who.userId, { session, account, region, until: now() + LOGIN_TTL_MS, need: '两步验证' })
             await audit(who.userId, 'login', false, 'need-tfa')
-            return '云端要求两步验证。请在验证器里看 6 位码，发「/打印机 两步验证 <6位>」（5 分钟内有效）。' + recall
+            return '云端要求两步验证。请在验证器里看 6 位码，发「/打印机 两步验证 <6位>」（5 分钟内有效）。'
           }
           return '登录没完成：云端返回了不认识的响应。'
         } catch (error) {
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'login', false, error.code || 'AUTH_FAILED')
           return '登录失败：' + explain(error)
         }
@@ -1237,12 +1218,10 @@ export default {
           }
           const r = await pending.session.submitCode(code)
           pendingLogins.delete(who.userId)
-          const recall = await recallSecretMessage(msg)
           const saved = await saveCloudLogin(who.userId, r, pending.account)
           await audit(who.userId, 'login', true, 'code')
-          return '验证码通过，登录成功，token 已加密保存' + (saved.count ? '，发现 ' + saved.count + ' 台打印机：' + saved.names.join('、') : '') + '。' + recall
+          return '验证码通过，登录成功，token 已加密保存' + (saved.count ? '，发现 ' + saved.count + ' 台打印机：' + saved.names.join('、') : '') + '。'
         } catch (error) {
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'login-code', false, error.code || 'CODE_FAILED')
           return '验证码登录失败：' + explain(error)
         }
@@ -1258,12 +1237,10 @@ export default {
         try {
           const r = await pending.session.submitTfa(rest)
           pendingLogins.delete(who.userId)
-          const recall = await recallSecretMessage(msg)
           const saved = await saveCloudLogin(who.userId, r, pending.account)
           await audit(who.userId, 'login', true, 'tfa')
-          return '两步验证通过，登录成功，token 已加密保存' + (saved.count ? '，发现 ' + saved.count + ' 台打印机：' + saved.names.join('、') : '') + '。' + recall
+          return '两步验证通过，登录成功，token 已加密保存' + (saved.count ? '，发现 ' + saved.count + ' 台打印机：' + saved.names.join('、') : '') + '。'
         } catch (error) {
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'login-2fa', false, error.code || 'TFA_FAILED')
           return '两步验证失败：' + explain(error)
         }
@@ -1297,33 +1274,27 @@ export default {
           const code = p[3] || ''
           const name = p.slice(4).join(' ')
           if (!seq || !/^\d{1,3}(\.\d{1,3}){3}$/.test(String(ip))) {
-            await tryDeleteMessage(msg)
             return '用法：/打印机 绑定 本地 <序列号> <打印机IP> <访问码> [名称]'
           }
           if (!append && !code) {
-            await tryDeleteMessage(msg)
             return '本地绑定要带访问码（打印机屏幕上「局域网访问码」）。'
           }
           const printer = { serial: seq, ip, name: name || seq.slice(-6), ...(code ? { accessCode: code } : {}) }
           if (append) {
             const lan = vault.listBindings(who.userId).filter((b) => b.mode === 'lan').pop()
             if (!lan) {
-              await tryDeleteMessage(msg)
               return '还没有本地凭据可以追加：先发「/打印机 绑定 本地 <序列号> <IP> <访问码>」。'
             }
             const existing = vault.printers(who.userId).filter((x) => x.bindingId === lan.id)
               .map((x) => ({ serial: x.serial, ip: x.ip, name: x.name, model: x.model }))
             await vault.setDiscoveredPrinters(who.userId, lan.id, [...existing, printer])
-            await tryDeleteMessage(msg)
             await audit(who.userId, 'bind', true, 'lan+', lan.id)
             return '已把这台加进「' + lan.label + '」，现在共 ' + (existing.length + 1) + ' 台。'
           }
           const r = await vault.addBinding(who.userId, { label: '我的打印机', mode: 'lan', accessCode: code, printers: [printer] })
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'bind', true, 'lan', r.id)
           return '本地凭据已加密保存。下一步：/打印机 状态'
         } catch (error) {
-          await tryDeleteMessage(msg)
           await audit(who.userId, 'bind', false, error.code || 'BAD_INPUT')
           return '绑定失败：' + explain(error)
         }

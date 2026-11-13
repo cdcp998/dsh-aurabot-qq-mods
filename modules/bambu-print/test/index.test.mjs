@@ -556,9 +556,12 @@ test('帮助用合并转发：默认一条塞进全部页，含风险与存储�
 
     // 合并转发里不写「帮助 N/6」：卡片本身就是折叠的一串，页码只是噪音。
     assert.doesNotMatch(all, /帮助 \d+\/\d+/, '合并转发的节点里不该出现页码')
-    // 第 1 页：风险告知
+    // 第 1 页：风险告知（含「私聊也会留明文」和「撤回不可靠」）
     assert.match(all, /① 风险/)
     assert.match(all, /风险/)
+    assert.match(all, /私聊记录会以明文留存/)
+    assert.match(all, /撤回并不能可靠消除风险/)
+    assert.match(all, /事后立即修改密码/)
     assert.match(all, /访问码 = 打印机控制权/)
     // 第 2 页：本地存储策略
     assert.match(all, /② 数据存在哪/)
@@ -719,23 +722,24 @@ test('拍照（TUTK 分支）：纯云端设备（无 LAN 地址）→ 真铸码
     assert.equal(all.toLowerCase().includes('authkey'), false, '回复里不能回显 ttcode')
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
-test('设置安全码/登录后明确提示用户撤回含秘密的消息（撤回失败也要提示）', async () => {
+test('回复里不再出现撤回相关文案，也不再调 delete_msg', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'bambu-int-'))
   try {
     const api = await boot(dir)
-    // 先让撤回失败：onebot delete_msg 抛错
+    // 撤回已整体移除：不管 onebot 支不支持，都不该再调 delete_msg
     api.onebot = async (action) => { if (action === 'delete_msg') throw new Error('no permission'); return {} }
+
     await say(api, '/打印机 设置安全码 ' + SECRET)
-    const text = lastText(api)
-    assert.match(text, /没权限撤回/)
-    assert.match(text, /自己撤回/)
-    assert.equal(text.includes(SECRET), false, '回复里不能回显安全码')
-    // 撤回成功：仍提示确认
-    api.onebot = async () => ({})
+    const regText = lastText(api)
+    assert.doesNotMatch(regText, /撤回/, '设置安全码的回复里不该提撤回：' + regText)
+    assert.equal(regText.includes(SECRET), false, '回复里不能回显安全码')
+
     await say(api, '/打印机 解锁 ' + SECRET)
-    const okText = lastText(api)
-    assert.match(okText, /已尝试撤回/)
-    assert.match(okText, /确认/)
+    const unlockText = lastText(api)
+    assert.doesNotMatch(unlockText, /撤回/, '解锁的回复里不该提撤回：' + unlockText)
+    assert.match(unlockText, /已解锁/)
+
+    assert.equal(api.__onebot.filter((c) => c.action === 'delete_msg').length, 0, '不该再调用撤回接口')
   } finally { await rm(dir, { recursive: true, force: true }) }
 })
 test('解锁有效期按天：默认 7 天 / 最小 1 天 / 最大 30 天，旧的分钟配置会迁移', async () => {
